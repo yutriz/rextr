@@ -4,7 +4,7 @@ OBJDIR = $(BUILDDIR)/obj
 PROJECTDIR = ..
 CXXFLAGS = -I$(PROJECTDIR) 
 CXXFLAGS_SSL = -lcrypto -lssl -Wno-deprecated-declarations
-CMDS = quickextr extr quickrepack
+CMDS = quickextr extr quickrepack nodupl
 
 all: mkdir_obj $(CMDS) 
 
@@ -39,7 +39,7 @@ $(OBJDIR)/extr_quickextr.o: $(PROJECTDIR)/src/extr/QuickExtr.cxx
 	$(CXX) -c $< $(CXXFLAGS) $(CXXFLAGS_SSL) -o $@ 
 
 # repack
-_REPACK = repack_check.o repack_readr.o repack_packing.o
+_REPACK = repack_check.o repack_readr.o repack_packing.o repack_fontt.o
 REPACK = $(patsubst %, $(OBJDIR)/%, $(_REPACK))
 
 $(OBJDIR)/repack_check.o: $(PROJECTDIR)/src/repack/Check.cxx
@@ -47,6 +47,8 @@ $(OBJDIR)/repack_check.o: $(PROJECTDIR)/src/repack/Check.cxx
 $(OBJDIR)/repack_readr.o: $(PROJECTDIR)/src/repack/ReadR.cxx
 	$(CXX) -c $< $(CXXFLAGS) -o $@
 $(OBJDIR)/repack_packing.o: $(PROJECTDIR)/src/repack/Packing.cxx
+	$(CXX) -c $< $(CXXFLAGS) -o $@ 
+$(OBJDIR)/repack_fontt.o: $(PROJECTDIR)/src/repack/FontTable.cxx
 	$(CXX) -c $< $(CXXFLAGS) -o $@ 
 
 # cmds
@@ -59,6 +61,8 @@ extr: $(PROJECTDIR)/src/cmd/extr.cxx $(UTILS) $(ENC) $(EXTR)
 quickrepack: $(PROJECTDIR)/src/cmd/quickrepack.cxx $(UTILS) $(ENC) $(REPACK)
 	$(CXX) $^ $(CXXFLAGS) $(CXXFLAGS_SSL) -o $(BUILDDIR)/quickrepack
 
+nodupl: $(PROJECTDIR)/src/cmd/nodupl.cxx $(UTILS) $(REPACK)
+	$(CXX) $^ $(CXXFLAGS) $(CXXFLAGS_SSL) -o $(BUILDDIR)/nodupl
 
 clean: 
 	rm $(BUILDDIR)/* -rf 
