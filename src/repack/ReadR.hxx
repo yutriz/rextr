@@ -2,10 +2,7 @@
 #define REXTR_REPACK_READR_HXX
 
 #include "src/repack/SceneR.hxx"
-
-#include <nlohmann/json.hpp>
-
-using Json = nlohmann::ordered_json;
+#include "src/utils/Json.hxx"
 
 BlockR_full Json2BlockR_full(const Json &j);
 SceneR_full Json2SceneR_full(const Json &j);

@@ -4,11 +4,9 @@
 /* test */
 #include "src/extr/Block.hxx"
 #include "src/extr/Scene.hxx"
+#include "src/utils/Json.hxx"
 
-#include <nlohmann/json.hpp>
 #include <fstream>
-
-using Json = nlohmann::ordered_json;
 
 Json Block2Json_full(const BasicBlock &blk);
 Json Block2Json_simple(const BasicBlock &blk);
