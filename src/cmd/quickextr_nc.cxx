@@ -72,8 +72,8 @@ int main(int argc, char *argv[]) {
     auto sjis_copy = Enc_sjis;
     // add conversion you found
     // make it a para?
-    // sjis_copy.add({CodePoint_t::B8, 0x0a}, {CodePoint_t::B8, 0x0a}); //SN1 2
-    sjis_copy.add({CodePoint_t::CJK, 0x0000}, {CodePoint_t::B8, 0x0a}); //SN1 2
+    //sjis_copy.add({CodePoint_t::B8, 0x0a}, {CodePoint_t::B8, 0x0a}); //SN1 2
+    sjis_copy.add({CodePoint_t::CJK, 0x0000}, {CodePoint_t::B8, 0x0a}); //PS1
 
     std::string output;
     if (f_ofile)
@@ -82,11 +82,11 @@ int main(int argc, char *argv[]) {
         output = addSuffix(std::string(ifile), ".qe.json");
 
     std::ofstream os(output);
-    quickExtrJson(ifile, os, sjis_copy);
+    quickExtrJson_SN1ps1(ifile, os, sjis_copy);
     os.close();
     
     if (f_print == 1) 
-        quickExtrJson(ifile, std::cout, sjis_copy);
+        quickExtrJson_SN1ps1(ifile, std::cout, sjis_copy);
 
     fprintf(stdout, "Done!\n");
 

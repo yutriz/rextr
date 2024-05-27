@@ -4,7 +4,7 @@ OBJDIR = $(BUILDDIR)/obj
 PROJECTDIR = ..
 CXXFLAGS = -I$(PROJECTDIR) 
 CXXFLAGS_SSL = -lcrypto -lssl -Wno-deprecated-declarations
-CMDS = quickextr extr quickrepack nodupl
+CMDS = quickextr quickextr_nc extr quickrepack nodupl
 
 all: mkdir_obj $(CMDS) 
 
@@ -54,6 +54,9 @@ $(OBJDIR)/repack_fontt.o: $(PROJECTDIR)/src/repack/FontTable.cxx
 # cmds
 quickextr: $(PROJECTDIR)/src/cmd/quickextr.cxx $(UTILS) $(ENC) $(EXTR)
 	$(CXX) $^ $(CXXFLAGS) $(CXXFLAGS_SSL) -o $(BUILDDIR)/quickextr
+
+quickextr_nc: $(PROJECTDIR)/src/cmd/quickextr_nc.cxx $(UTILS) $(ENC) $(EXTR)
+	$(CXX) $^ $(CXXFLAGS) $(CXXFLAGS_SSL) -o $(BUILDDIR)/quickextr_nc
 
 extr: $(PROJECTDIR)/src/cmd/extr.cxx $(UTILS) $(ENC) $(EXTR)
 	$(CXX) $^ $(CXXFLAGS) $(CXXFLAGS_SSL) -o $(BUILDDIR)/extr

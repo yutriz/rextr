@@ -108,6 +108,7 @@ Encoding::conv(CodePoint cp, bool cjk_only) const {
 
 /**
  * no duplicate check 
+ * add(src, dst)
  */
 void
 Encoding::add(CodePoint from, CodePoint to) {
