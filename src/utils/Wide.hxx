@@ -51,12 +51,14 @@ wstring2string(const std::wstring &wstr) {
 #include <locale>
 #include <codecvt>
 
-std::wstring string2wstring(const std::string &str) {
+inline std::wstring 
+string2wstring(const std::string &str) {
     std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> conv;
     return conv.from_bytes(str);
 }
 
-std::string wstring2string(const std::wstring &wstr) {
+inline std::string 
+wstring2string(const std::wstring &wstr) {
     std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> conv;
     return conv.to_bytes(wstr);
 }

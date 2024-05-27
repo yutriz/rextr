@@ -18,8 +18,8 @@ readOne(CodePoint &src, CodePoint &dst, std::istream &is,
     if (is.eof()) 
         return -1;
 
-    if (CodePoint cp = enc.conv(CodePoint{CodePoint_t::B8, c1}, cjk_only); 
-        cp.t == CodePoint_t::B8) { 
+    if (auto cp = enc.conv(CodePoint{CodePoint_t::B8, c1}, cjk_only); 
+        cp.t != CodePoint_t::ERR) { 
         src = CodePoint{CodePoint_t::B8, c1};
         dst = cp;
         return 1;
@@ -35,8 +35,8 @@ readOne(CodePoint &src, CodePoint &dst, std::istream &is,
     } 
 
     cp_basic cp_val = (c1<<8) + static_cast<cp_basic>(c2);
-    if (CodePoint cp = enc.conv(CodePoint{CodePoint_t::CJK, cp_val}, cjk_only); 
-        cp.t == CodePoint_t::CJK) {
+    if (auto cp = enc.conv(CodePoint{CodePoint_t::CJK, cp_val}, cjk_only); 
+        cp.t != CodePoint_t::ERR) {
         src = CodePoint{CodePoint_t::CJK, cp_val};
         dst = cp;
         return 1;

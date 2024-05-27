@@ -15,7 +15,7 @@ void Usage() {
 }
 
 int main(int argc, char *argv[]) {
-    if (argc < 5 || strcmpi(argv[1], "-k") || strcmpi(argv[3], "-c"))
+    if (argc < 5 || strcmp(argv[1], "-k") || strcmp(argv[3], "-c"))
         Usage();
     
     //
