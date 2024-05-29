@@ -3,7 +3,7 @@
 #include "src/repack/Check.hxx"
 #include "src/cmd/Option.hxx"
 
-const char *short_opts = "hi:o::r:";
+const char *short_opts = "hi:o::r:z";
 bool f_ifile = 0;   char *ifile;
 bool f_ofile = 0;   char *ofile;
 bool f_rfile = 0;   char *rfile;
@@ -25,7 +25,7 @@ static constexpr OptionDef opt_defs[] = {
 
 static void printHelp() {
     printf("\n");
-    printf("Repack from json file and original raw file\n");
+    printf("Repack from json file and original raw file(English Only)\n");
     printf("Usage: quickrepack -r filename -i filename (-o filename)\n");
     for(const auto &i : opt_defs)
         PrintOpts(i);
@@ -73,11 +73,13 @@ int main(int argc, char *argv[]) {
     if (f_ofile)
         output = std::string(ofile);
     if (!f_ofile)
-        output = addSuffix(std::string(ifile), ".repack");
+        output = addSuffix(std::string(rfile), ".repack");
     
     std::ofstream ofs(output, std::ios::binary);
     SceneR_offset scnro = readSceneR_offset(ifile);
+
     repack_offset(scnro, rfile, ofs, checkSceneR_offset);
+
     ofs.close();
 
 }
