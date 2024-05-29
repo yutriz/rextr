@@ -1,5 +1,6 @@
 #include "src/repack/Packing.hxx"
 #include "src/utils/WriteBin.hxx"
+#include "src/utils/Wide.hxx"
 
 #include <cassert>
 
@@ -38,12 +39,54 @@ size_t repack_offset(SceneR_offset &scnro, const char *rawfile, std::ostream &os
         char *buffer = new char[buffer_size];
         rfp.read(buffer, buffer_size-1); 
         os.write(buffer, buffer_size-1);
+
         writeBin_val(os, iter.m_translated_text.length(), 1);
         //os.flush();
         rfp_offset += buffer_size;
         rfp_offset += iter.m_len;
 
         writeBin_mixed(os, iter.m_translated_text);
+        delete[] buffer;
+    }
+
+    rfp.seekg(0, std::ios::end);
+    size_t fend = rfp.tellg();
+    rfp.seekg(rfp_offset, std::ios::beg);
+    size_t buffer_size = fend - rfp_offset;
+    char buffer[buffer_size];
+    rfp.read(buffer, buffer_size);
+    os.write(buffer, buffer_size);
+    //os.flush();
+    rfp_offset += buffer_size;
+
+    return rfp_offset;
+}
+
+size_t repack_offset_enc(SceneR_offset &scnro, const char *rawfile, 
+                        Encoding &enc, std::ostream &os, 
+                        int (*checkFunc)(SceneR_offset&, const char *)) {
+    checkFunc(scnro, rawfile);
+    
+    std::ifstream rfp(rawfile, std::ios::binary);
+    size_t rfp_offset = 0;
+
+    for (auto iter : *(scnro.m_blks)) {
+        rfp.seekg(rfp_offset, std::ios::beg);
+        const size_t buffer_size = iter.m_offset - rfp_offset;
+        char *buffer = new char[buffer_size];
+        rfp.read(buffer, buffer_size-1); 
+        os.write(buffer, buffer_size-1);
+
+        auto len_zh = countBytes(iter.m_translated_text_zh);
+        writeBin_val(os, len_zh, 1);
+
+        //os.flush();
+        rfp_offset += buffer_size;
+        rfp_offset += iter.m_len;
+
+        writeBin_mixed_enc(os, iter.m_translated_text_zh, enc);
+        fprintf(stdout, "%s write!\n", iter.m_translated_text_zh.c_str());
+
         delete[] buffer;
     }
 

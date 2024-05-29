@@ -36,3 +36,4 @@
 *.rtz
 *~
 cmdline/build
+res

@@ -1,9 +1,10 @@
 #include "src/enc/Encoding.hxx"
+#include "src/enc/B8.hxx"
 
 #include <fstream>
 #include <string>
 
-Encoding::Encoding(bool isRef, cp_basic fffd, 
+Encoding::Encoding(int isRef, cp_basic fffd, 
                    Range b8, const cp_basic *b8charset2dst, 
                    Range row, Range col, 
                    const cp_basic* const* charset2dst) :
@@ -12,17 +13,18 @@ Encoding::Encoding(bool isRef, cp_basic fffd,
 }
 
 Encoding::~Encoding(){
-    if (m_isRef == false) {
-        // b8
-        delete[] m_b8charset2dst;
+    if ((m_isRef>>0) & 1)
+        delete[] m_b8charset2dst; // b8
+
+    if ((m_isRef>>1) & 2) {
         // cjk
         const int rows = m_row.end - m_row.start + 1; 
         for (int r=0; r<rows; r++) 
             delete[] m_charset2dst[r];
             
         delete[] m_charset2dst;
-    
     } 
+
 }
 
 /* = ref */
@@ -115,8 +117,11 @@ Encoding::add(CodePoint from, CodePoint to) {
     m_extras.push_back(std::make_pair(from, to));
 }
 
+/**
+ *  return a pointer to cp_basic[0x100]
+*/
 static cp_basic*
-readTable_B8(std::istream &b8, cp_basic fffd) {
+readTable_B8(std::istream &b8, const cp_basic fffd, Range &r) {
     cp_basic *table_b8 = new cp_basic[0x100];
     {
         for(int i=0; i<0x100; i++) {
@@ -148,24 +153,7 @@ readTable_B8(std::istream &b8, cp_basic fffd) {
             table_b8[b8char] = b8dst;
         }
     }
-    return table_b8;
-}
 
-/**
- * no good 
- * static cp_basic**
- * readTable_CJK(std::istream &b8, cp_basic fffd);
- */
-
-/**
- * still ugly
- */
-Encoding*
-newEncoding(std::istream &b8, std::istream &cjk) {
-    constexpr cp_basic fffd = 0xfffd;
-    
-    // b8
-    cp_basic *table_b8 = readTable_B8(b8, fffd);
     // cal size 
     unsigned int b8_start = 0x00;
     unsigned int b8_end = 0xff;
@@ -182,6 +170,15 @@ newEncoding(std::istream &b8, std::istream &cjk) {
         }
     }
 
+    r = Range{b8_start, b8_end};
+    return table_b8;
+}
+
+/**
+ * 
+ */
+static cp_basic** 
+readTable_CJK(std::istream &cjk, const cp_basic fffd, Range &rrow, Range &rcol) {
     // calculate cjk table size
     unsigned int row_start = 0xff; 
     unsigned int row_end = 0x00;
@@ -290,9 +287,29 @@ newEncoding(std::istream &b8, std::istream &cjk) {
         }
     }
 
-    return 
-    new Encoding(false, fffd, Range{b8_start, b8_end},  table_b8,
-                 Range{row_start, row_end}, Range{col_start, col_end}, table_cjk);
+    rrow = Range{row_start, row_end};
+    rcol = Range{col_start, col_end};
+    return table_cjk;
+}
+
+/**
+ * still ugly
+ */
+Encoding*
+newEncoding(std::istream &b8, std::istream &cjk) {
+    constexpr cp_basic fffd = 0xfffd;
+    
+    // b8
+    Range rb8{0x00,0xff};
+    cp_basic *table_b8 = readTable_B8(b8, fffd, rb8);
+ 
+    Range rrow{0x00,0xff};
+    Range rcol{0x00,0xff};
+
+    auto table_cjk = readTable_CJK(cjk, fffd, rrow, rcol);
+
+    // 3 = 0b11
+    return new Encoding(3, fffd, rb8, table_b8, rrow, rcol, table_cjk);
 }
 
 Encoding*
@@ -311,3 +328,19 @@ newEncoding(const char *b8, const char *cjk) {
 
     return enc;
 }
+
+
+Encoding*
+newEncoding_cjk(const char *cjk) {
+    std::fstream cjkf{cjk, std::fstream::in};
+    constexpr cp_basic fffd = 0xfffd;
+    if (!cjkf.is_open())
+        fprintf(stderr, "failed to open %s.\n", cjk);
+    
+    Range row{0x00,0xff};
+    Range col{0x00,0xff};
+    auto cjk_table = readTable_CJK(cjkf, fffd, row, col);
+
+    return new Encoding(2, fffd, Range{0x20, 0x7d}, general_8bit, row, col, cjk_table);
+}
+

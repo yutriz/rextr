@@ -3,12 +3,14 @@
 #include "src/repack/Check.hxx"
 #include "src/cmd/Option.hxx"
 
-const char *short_opts = "hi:o::r:z";
+const char *short_opts = "c:hi:o::r:";
 bool f_ifile = 0;   char *ifile;
 bool f_ofile = 0;   char *ofile;
 bool f_rfile = 0;   char *rfile;
+bool f_cjk   = 0;   char *cjk;
 
 static constexpr option long_opts[] = {
+    {"cjk",         1, NULL, 'c'},
     {"input",       1, NULL, 'i'},
     {"help",        0, NULL, 'h'},
     {"output",      1, NULL, 'o'},
@@ -17,6 +19,7 @@ static constexpr option long_opts[] = {
 };
 
 static constexpr OptionDef opt_defs[] = {
+    {"cjk",     'c', 0, "",      "cjk table"},
   	{"input",   'i', 1, "file",  "raw data"},
     {"help",    'h', 0, "",      "print help options"},
     {"output",  'o', 1, "file",  "default: raw_file.repack"},
@@ -25,8 +28,8 @@ static constexpr OptionDef opt_defs[] = {
 
 static void printHelp() {
     printf("\n");
-    printf("Repack from json file and original raw file(English Only)\n");
-    printf("Usage: quickrepack -r filename -i filename (-o filename)\n");
+    printf("Repack from json file and original raw file(Custom encoding)\n");
+    printf("Usage: quickrepack -r filename -i filename -c cjk_table(-b 8bit_tbale -o filename)\n");
     for(const auto &i : opt_defs)
         PrintOpts(i);
     exit(0);
@@ -37,6 +40,10 @@ int getOptions(int argc, char **argv) {
     while ((c = getopt_long(argc, argv, short_opts, long_opts, NULL)) != -1) {
         switch (c)
         {
+        case 'c':
+            f_cjk = 1;
+            cjk = optarg;
+            break;
         case 'h':
             printHelp();
             break;
@@ -78,8 +85,9 @@ int main(int argc, char *argv[]) {
     std::ofstream ofs(output, std::ios::binary);
     SceneR_offset scnro = readSceneR_offset(ifile);
 
-    repack_offset(scnro, rfile, ofs, checkSceneR_offset);
+    auto enc = newEncoding_cjk(cjk);
+    enc->add(CodePoint{CodePoint_t::B8, 0x0a}, CodePoint{CodePoint_t::B8, 0x0a});
 
+    repack_offset_enc(scnro, rfile, *enc, ofs, checkSceneR_offset);
     ofs.close();
-
 }

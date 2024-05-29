@@ -9,10 +9,12 @@
 struct Range {
     unsigned int start;
     unsigned int end;
+    
+    Range& operator=(const Range &r) { this->start=r.start; this->end=r.end; return *this; }
 };
 
 class Encoding {
-    bool m_isRef; /* whether to delete tables */
+    int m_isRef; /* whether to delete tables? bit */
     cp_basic m_fffd; /* represents invalid character */
 
     // 8 bits
@@ -41,7 +43,7 @@ private:
     int byteCol(int byte) const;
 
 public: 
-    Encoding(bool, cp_basic, Range, const cp_basic*, Range, Range, const cp_basic* const*);
+    Encoding(int, cp_basic, Range, const cp_basic*, Range, Range, const cp_basic* const*);
     ~Encoding();
 
     Encoding& operator=(const Encoding &enc);
@@ -56,7 +58,9 @@ public:
 };
 
 Encoding* newEncoding(std::istream &b8, std::istream &cjk);
+
 Encoding* newEncoding(const char *b8, const char *cjk);
+Encoding* newEncoding_cjk(const char *cjk);
 
 
 #endif

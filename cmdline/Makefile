@@ -4,19 +4,14 @@ OBJDIR = $(BUILDDIR)/obj
 PROJECTDIR = ..
 CXXFLAGS = -I$(PROJECTDIR) 
 CXXFLAGS_SSL = -lcrypto -lssl -Wno-deprecated-declarations
-CMDS = quickextr quickextr_nc extr quickrepack nodupl
+#CMDS = quickextr quickextr_nc extr quickrepack quickrepack_enc nodupl
+
+CMDS = quickrepack quickrepack_enc
 
 all: mkdir_obj $(CMDS) 
 
 mkdir_obj:
 	if [ ! -d $(BUILDDIR)/obj ]; then mkdir -p $(BUILDDIR)/obj; fi
-
-# utils 
-_UTILS = utils_hash.o
-UTILS = $(patsubst %, $(OBJDIR)/%, $(_UTILS))
-
-$(OBJDIR)/utils_hash.o: $(PROJECTDIR)/src/utils/Hash.cxx
-	$(CXX) -c $< $(CXXFLAGS) $(CXXFLAGS_SSL) -o $@ 
 
 # enc
 _ENC = enc_encoding.o enc_unicode.o
@@ -26,6 +21,15 @@ $(OBJDIR)/enc_encoding.o: $(PROJECTDIR)/src/enc/Encoding.cxx
 	$(CXX) -c $< $(CXXFLAGS) -o $@ 
 $(OBJDIR)/enc_unicode.o: $(PROJECTDIR)/src/enc/Unicode.cxx 
 	$(CXX) -c $< $(CXXFLAGS) -o $@ 
+
+# utils 
+_UTILS = utils_hash.o utils_writebin.o
+UTILS = $(patsubst %, $(OBJDIR)/%, $(_UTILS))
+
+$(OBJDIR)/utils_hash.o: $(PROJECTDIR)/src/utils/Hash.cxx
+	$(CXX) -c $< $(CXXFLAGS) $(CXXFLAGS_SSL) -o $@ 
+$(OBJDIR)/utils_writebin.o: $(PROJECTDIR)/src/utils/WriteBin.cxx $(ENC)
+	$(CXX) -c $< $(CXXFLAGS) $(CXXFLAGS_SSL) -o $@ 
 
 # extr
 _EXTR = extr_read.o extr_extract.o extr_quickextr.o
@@ -46,7 +50,7 @@ $(OBJDIR)/repack_check.o: $(PROJECTDIR)/src/repack/Check.cxx
 	$(CXX) -c $< $(CXXFLAGS) $(CXXFLAGS_SSL) -o $@ 
 $(OBJDIR)/repack_readr.o: $(PROJECTDIR)/src/repack/ReadR.cxx
 	$(CXX) -c $< $(CXXFLAGS) -o $@
-$(OBJDIR)/repack_packing.o: $(PROJECTDIR)/src/repack/Packing.cxx
+$(OBJDIR)/repack_packing.o: $(PROJECTDIR)/src/repack/Packing.cxx $(ENC) $(UTILS)
 	$(CXX) -c $< $(CXXFLAGS) -o $@ 
 $(OBJDIR)/repack_fontt.o: $(PROJECTDIR)/src/repack/FontTable.cxx
 	$(CXX) -c $< $(CXXFLAGS) -o $@ 
@@ -64,7 +68,10 @@ extr: $(PROJECTDIR)/src/cmd/extr.cxx $(UTILS) $(ENC) $(EXTR)
 quickrepack: $(PROJECTDIR)/src/cmd/quickrepack.cxx $(UTILS) $(ENC) $(REPACK)
 	$(CXX) $^ $(CXXFLAGS) $(CXXFLAGS_SSL) -o $(BUILDDIR)/quickrepack
 
-nodupl: $(PROJECTDIR)/src/cmd/nodupl.cxx $(UTILS) $(REPACK)
+quickrepack_enc: $(PROJECTDIR)/src/cmd/quickrepack_enc.cxx $(UTILS) $(ENC) $(REPACK)
+	$(CXX) $^ $(CXXFLAGS) $(CXXFLAGS_SSL) -o $(BUILDDIR)/quickrepack_enc
+
+nodupl: $(PROJECTDIR)/src/cmd/nodupl.cxx $(UTILS) $(REPACK) $(ENC)
 	$(CXX) $^ $(CXXFLAGS) $(CXXFLAGS_SSL) -o $(BUILDDIR)/nodupl
 
 clean: 
