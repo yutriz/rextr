@@ -4,9 +4,8 @@ OBJDIR = $(BUILDDIR)/obj
 PROJECTDIR = ..
 CXXFLAGS = -I$(PROJECTDIR) 
 CXXFLAGS_SSL = -lcrypto -lssl -Wno-deprecated-declarations
-#CMDS = quickextr quickextr_nc extr quickrepack quickrepack_enc nodupl
+CMDS = quickextr quickextr_nc extr quickrepack quickrepack_enc nodupl
 
-CMDS = quickrepack quickrepack_enc
 
 all: mkdir_obj $(CMDS) 
 

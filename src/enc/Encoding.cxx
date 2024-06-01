@@ -13,10 +13,10 @@ Encoding::Encoding(int isRef, cp_basic fffd,
 }
 
 Encoding::~Encoding(){
-    if ((m_isRef>>0) & 1)
+    if (! ((m_isRef>>0) & 1))
         delete[] m_b8charset2dst; // b8
 
-    if ((m_isRef>>1) & 2) {
+    if (! ((m_isRef>>1) & 1)) {
         // cjk
         const int rows = m_row.end - m_row.start + 1; 
         for (int r=0; r<rows; r++) 
@@ -30,7 +30,7 @@ Encoding::~Encoding(){
 /* = ref */
 Encoding&
 Encoding::operator=(const Encoding &enc) {
-    this->m_isRef = true;
+    this->m_isRef = enc.m_isRef;
     this->m_fffd = enc.m_fffd; 
     this->m_b8 = enc.m_b8;
     this->m_b8charset2dst = enc.m_b8charset2dst;

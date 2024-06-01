@@ -3038,7 +3038,7 @@ static const cp_basic* sjis_table_16bit[0x70] = {
 };
 
 const Encoding Enc_sjis = Encoding(
-    true,
+    3,
     0xfffd,
     Range{0x20, 0xde},
     sjis_page_8bit,

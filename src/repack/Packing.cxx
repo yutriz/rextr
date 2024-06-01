@@ -85,7 +85,6 @@ size_t repack_offset_enc(SceneR_offset &scnro, const char *rawfile,
         rfp_offset += iter.m_len;
 
         writeBin_mixed_enc(os, iter.m_translated_text_zh, enc);
-        fprintf(stdout, "%s write!\n", iter.m_translated_text_zh.c_str());
 
         delete[] buffer;
     }

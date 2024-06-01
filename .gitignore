@@ -37,3 +37,5 @@
 *~
 cmdline/build
 res
+
+**/__pycache__/
