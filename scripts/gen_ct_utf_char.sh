@@ -1,7 +1,15 @@
 #!/usr/bin/bash
 # gen_ct_utf.sh nodupl(1 char/line)
+# no-duplicate aka a map 
 
-# noduplicate
+
+# input: 
+#  a
+#  b
+# output:
+#  61=a
+#  62=b
+
 nd=$1
 
 i=0;

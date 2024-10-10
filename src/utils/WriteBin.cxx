@@ -1,5 +1,5 @@
-#include "src/utils/Wide.hxx"
-#include "src/utils/WriteBin.hxx"
+#include "utils/Wide.hxx"
+#include "utils/WriteBin.hxx"
 
 /**
  * oops the endian! 

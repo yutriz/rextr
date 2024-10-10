@@ -1,5 +1,5 @@
-#include "src/extr/Read.hxx"
-#include "src/utils/Hash.hxx"
+#include "extr/Read.hxx"
+#include "utils/Hash.hxx"
 
 #include <istream>
 #include <cassert>

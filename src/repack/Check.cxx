@@ -1,6 +1,6 @@
-#include "src/repack/Check.hxx"
-#include "src/utils/Hash.hxx"
-#include "src/utils/Wide.hxx"
+#include "repack/Check.hxx"
+#include "utils/Hash.hxx"
+#include "utils/Wide.hxx"
 
 #include <cassert>
 #include <fstream>

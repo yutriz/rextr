@@ -1,5 +1,5 @@
-#include "src/repack/ReadR.hxx"
-#include "src/utils/Hex.hxx"
+#include "repack/ReadR.hxx"
+#include "utils/Hex.hxx"
 
 #include <fstream>
 

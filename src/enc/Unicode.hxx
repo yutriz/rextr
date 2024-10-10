@@ -1,7 +1,7 @@
 #ifndef REXTR_ENC_UNICODE_HXX
 #define REXTR_ENC_UNICODE_HXX
 
-#include "src/enc/CodePoint.hxx"
+#include "enc/CodePoint.hxx"
 
 #include <string>
 

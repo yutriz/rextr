@@ -1,7 +1,7 @@
-#include "src/repack/Packing.hxx"
-#include "src/repack/ReadR.hxx"
-#include "src/repack/Check.hxx"
-#include "src/cmd/Option.hxx"
+#include "repack/Packing.hxx"
+#include "repack/ReadR.hxx"
+#include "repack/Check.hxx"
+#include "cmd/Option.hxx"
 
 const char *short_opts = "c:hi:o::r:";
 bool f_ifile = 0;   char *ifile;
@@ -29,7 +29,7 @@ static constexpr OptionDef opt_defs[] = {
 static void printHelp() {
     printf("\n");
     printf("Repack from json file and original raw file(Custom encoding)\n");
-    printf("Usage: quickrepack -r filename -i filename -c cjk_table(-b 8bit_tbale -o filename)\n");
+    printf("Usage: quickrepack_enc -r filename -i filename -c cjk_table(-b 8bit_tbale -o filename)\n");
     for(const auto &i : opt_defs)
         PrintOpts(i);
     exit(0);

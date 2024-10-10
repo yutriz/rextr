@@ -1,7 +1,7 @@
 #ifndef REXTR_EXTR_BLOCK_HXX
 #define REXTR_EXTR_BLOCK_HXX
 
-#include "src/enc/CodePoint.hxx"
+#include "enc/CodePoint.hxx"
 
 #include <string>
 #include <list>

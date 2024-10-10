@@ -1,8 +1,8 @@
 #ifndef REXT_REPACK_PACKING_HXX
 #define REXT_REPACK_PACKING_HXX
 
-#include "src/repack/SceneR.hxx"
-#include "src/enc/Encoding.hxx"
+#include "repack/SceneR.hxx"
+#include "enc/Encoding.hxx"
 
 #include <fstream>
 

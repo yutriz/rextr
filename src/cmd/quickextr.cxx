@@ -1,6 +1,6 @@
-#include "src/extr/QuickExtr.hxx"
-#include "src/enc/Shiftjis.hxx"
-#include "src/cmd/Option.hxx"
+#include "extr/QuickExtr.hxx"
+#include "enc/Shiftjis.hxx"
+#include "cmd/Option.hxx"
 
 #include <fstream>
 
@@ -71,7 +71,7 @@ int main(int argc, char *argv[]) {
 
     auto sjis_copy = Enc_sjis;
     // add conversion you found
-    // make it a para?
+    // or make it a para?
     sjis_copy.add({CodePoint_t::B8, 0x0a}, {CodePoint_t::B8, 0x0a}); //SN1 2
     //sjis_copy.add({CodePoint_t::CJK, 0x0000}, {CodePoint_t::B8, 0x0a}); 
 

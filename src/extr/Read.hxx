@@ -1,9 +1,9 @@
 #ifndef REXTR_EXTR_READ_HXX
 #define REXTR_EXTR_READ_HXX
 
-#include "src/enc/Encoding.hxx"
-#include "src/extr/Block.hxx"
-#include "src/extr/Scene.hxx"
+#include "enc/Encoding.hxx"
+#include "extr/Block.hxx"
+#include "extr/Scene.hxx"
 
 #include <fstream>
 

@@ -1,7 +1,7 @@
-#include "src/repack/Packing.hxx"
-#include "src/repack/ReadR.hxx"
-#include "src/repack/Check.hxx"
-#include "src/cmd/Option.hxx"
+#include "repack/Packing.hxx"
+#include "repack/ReadR.hxx"
+#include "repack/Check.hxx"
+#include "cmd/Option.hxx"
 
 const char *short_opts = "hi:o::r:z";
 bool f_ifile = 0;   char *ifile;

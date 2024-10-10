@@ -1,7 +1,7 @@
 #ifndef REXT_REPACK_SCENER_HXX
 #define REXT_REPACK_SCENER_HXX
 
-#include "src/repack/BlockR.hxx"
+#include "repack/BlockR.hxx"
 
 #include <memory>
 #include <list>

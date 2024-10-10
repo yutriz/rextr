@@ -1,8 +1,8 @@
 #ifndef REXTR_REPACK_READR_HXX
 #define REXTR_REPACK_READR_HXX
 
-#include "src/repack/SceneR.hxx"
-#include "src/utils/Json.hxx"
+#include "repack/SceneR.hxx"
+#include "utils/Json.hxx"
 
 BlockR_full Json2BlockR_full(const Json &j);
 SceneR_full Json2SceneR_full(const Json &j);

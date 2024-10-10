@@ -1,6 +1,6 @@
 #!/usr/bin/bash
-# with gen_ct_rv
 # generate a unicode.org style .TXT file from .TBL file
+# TBL be like CODEPOINT=CHAR, eg 95ca=别 to 0x522B=0x95ca (left utf, right non-utf)
 
 printf "# unicode.org style .TXT from $1\n"
 

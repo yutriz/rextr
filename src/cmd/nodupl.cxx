@@ -1,4 +1,4 @@
-#include "src/repack/FontTable.hxx"
+#include "repack/FontTable.hxx"
 
 #include <string.h>
 #include <iostream>

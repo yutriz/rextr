@@ -1,7 +1,7 @@
-#include "src/enc/Unicode.hxx"
-#include "src/extr/Extract.hxx"
-#include "src/extr/Read.hxx"
-#include "src/utils/Hex.hxx"
+#include "enc/Unicode.hxx"
+#include "extr/Extract.hxx"
+#include "extr/Read.hxx"
+#include "utils/Hex.hxx"
 
 /**
  * 0x1234 to "1234"

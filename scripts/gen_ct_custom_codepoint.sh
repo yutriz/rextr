@@ -1,9 +1,20 @@
 #!/usr/bin/bash
-#  e.g. 
-#  given row start at ee, end at **
-#        col start at 40, end at ** 
-#  中  ->   ee40=中
-#  文  ->   ee41=文
+#  remapping characters to custom CodePoint in given 2d ranges
+#  ONLY ONE CHARACTER PER LINE ALLOWED 
+#  e.g.  
+#  give input file like:
+#   中
+#   文
+#   ...
+#  given row start at ee, end at f0
+#        col start at 40, end at 50
+#  output: 
+#   ee40=中
+#   ee41=文
+#   ...
+#   ee50=...
+#   ef40=...
+#   ...
 
 
 ARGS=`getopt -a -o f:r:t:c:v:h --long file:,rows:,rowe:,cols:,cole:,help -- "$@"`
@@ -33,6 +44,24 @@ do
             shift
             ;;
         -h|--help)
+            echo "
+#  remapping characters to custom CodePoint in given 2d ranges
+#  ONLY ONE CHARACTER PER LINE ALLOWED 
+#  e.g.  
+#  give input file like:
+#   中
+#   文
+#   ...
+#  given row start at ee, end at f0
+#        col start at 40, end at 50
+#  output: 
+#   ee40=中
+#   ee41=文
+#   ...
+#   ee50=...
+#   ef40=...
+#   ...
+            "
             echo "$0 -f file -r row_start -t row_end -c col_start -v col_end"
             exit 1
             ;;

@@ -1,7 +1,7 @@
 #ifndef REXTR_EXTR_SCENE_HXX
 #define REXTR_EXTR_SCENE_HXX
 
-#include "src/extr/Block.hxx"
+#include "extr/Block.hxx"
 
 struct Scene {
     std::string m_md5; /* file associated */

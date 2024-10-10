@@ -1,5 +1,5 @@
-#include "src/enc/Encoding.hxx"
-#include "src/enc/B8.hxx"
+#include "enc/Encoding.hxx"
+#include "enc/B8.hxx"
 
 #include <fstream>
 #include <string>
