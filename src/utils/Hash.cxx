@@ -12,8 +12,8 @@
  *  EVP_Q_digest(NULL, "MD5", NULL, target.c_str(), target.size(), digest, NULL);
  */
 
-#include "src/utils/Hash.hxx"
-#include "src/utils/Hex.hxx"
+#include "utils/Hash.hxx"
+#include "utils/Hex.hxx"
 
 std::string MD5sum(const char *fn) {
     std::ifstream f(fn, std::ios::ate | std::ios::binary);

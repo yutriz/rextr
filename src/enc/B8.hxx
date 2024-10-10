@@ -1,7 +1,7 @@
 #ifndef REXTR_ENC_B8_HXX
 #define REXTR_ENC_B8_HXX
 
-#include "src/enc/CodePoint.hxx"
+#include "enc/CodePoint.hxx"
 
 /**
  *  Range [0x20, 0x7d] 

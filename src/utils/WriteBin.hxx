@@ -1,7 +1,7 @@
 #ifndef REXT_UTILS_WB_HXX
 #define REXT_UTILS_WB_HXX
 
-#include "src/enc/Encoding.hxx"
+#include "enc/Encoding.hxx"
 
 #include <cstdint>
 #include <cstring>

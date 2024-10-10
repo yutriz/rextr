@@ -1,8 +1,8 @@
-#include "src/extr/Block.hxx"
-#include "src/extr/Extract.hxx"
-#include "src/extr/QuickExtr.hxx"
-#include "src/extr/Read.hxx"
-#include "src/utils/Hash.hxx"
+#include "extr/Block.hxx"
+#include "extr/Extract.hxx"
+#include "extr/QuickExtr.hxx"
+#include "extr/Read.hxx"
+#include "utils/Hash.hxx"
 
 #include <iostream>
 

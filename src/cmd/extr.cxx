@@ -1,8 +1,8 @@
-#include "src/enc/Encoding.hxx"
-#include "src/extr/Read.hxx"
-#include "src/extr/Extract.hxx"
-#include "src/utils/Hex.hxx"
-#include "src/cmd/Option.hxx"
+#include "enc/Encoding.hxx"
+#include "extr/Read.hxx"
+#include "extr/Extract.hxx"
+#include "utils/Hex.hxx"
+#include "cmd/Option.hxx"
 
 static const char *short_opts = "a:b:c:hi:o:s";
 
@@ -34,7 +34,7 @@ static constexpr OptionDef opt_defs[] = {
 };
 
 static void PrintHelp() {
-    printf("Extract recognized texts in given encoding from file");
+    printf("Extract recognized text in given encoding from file");
     printf("Usage:\n");
     printf("  fullextr -b b8_table -c cjk_table -i filename (-o filename)\n");
     for(const auto &i : opt_defs)

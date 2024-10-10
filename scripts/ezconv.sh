@@ -1,6 +1,8 @@
 #!/usr/bin/bash
 
+echo "convert between CodePoint and Character "
 echo "usage:"
+echo "source this file, then"
 echo "    cp \${char} " 
 echo "    char \${codepoint} (without 0x)" 
 

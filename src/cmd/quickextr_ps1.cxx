@@ -1,6 +1,6 @@
-#include "src/extr/QuickExtr.hxx"
-#include "src/enc/Shiftjis.hxx"
-#include "src/cmd/Option.hxx"
+#include "extr/QuickExtr.hxx"
+#include "enc/Shiftjis.hxx"
+#include "cmd/Option.hxx"
 
 #include <fstream>
 

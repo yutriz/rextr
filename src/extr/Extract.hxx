@@ -2,9 +2,9 @@
 #define REXT_EXTR_EXTRACT_HXX
 
 /* test */
-#include "src/extr/Block.hxx"
-#include "src/extr/Scene.hxx"
-#include "src/utils/Json.hxx"
+#include "extr/Block.hxx"
+#include "extr/Scene.hxx"
+#include "utils/Json.hxx"
 
 #include <fstream>
 

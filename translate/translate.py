@@ -83,7 +83,7 @@ def translate(jsonFile, tl_func, dst_lang='zh', verbose=False):
 #         for k in range(0, 30):
 #             jsonDict['blocks'][i+k]['translated_text'] = wrapper(tl_result[k], do_wrap)
 
-#         # visual ?
+#         # verbose ?
 #         print(tl_result)
         
 #         # write every bulk request  

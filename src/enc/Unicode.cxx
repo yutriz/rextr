@@ -1,5 +1,5 @@
-#include "src/enc/Unicode.hxx"
-#include "src/utils/Unicode.hxx"
+#include "enc/Unicode.hxx"
+#include "utils/Unicode.hxx"
 
 std::string utf8Character(const CodePoint &cp) {
     return utf8Character_basic(cp.val);

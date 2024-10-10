@@ -1,7 +1,7 @@
-#include "src/enc/CodePoint.hxx"
-#include "src/repack/FontTable.hxx"
-#include "src/utils/Wide.hxx"
-#include "src/utils/Unicode.hxx"
+#include "enc/CodePoint.hxx"
+#include "repack/FontTable.hxx"
+#include "utils/Wide.hxx"
+#include "utils/Unicode.hxx"
 
 /**
  * 

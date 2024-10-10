@@ -18,5 +18,5 @@ struct H_NFTR {
 
 struct H_FNIF {
     int chunk_size;
-    
-}
+    // unfinished   
+};

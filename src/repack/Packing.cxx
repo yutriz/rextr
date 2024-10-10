@@ -1,6 +1,6 @@
-#include "src/repack/Packing.hxx"
-#include "src/utils/WriteBin.hxx"
-#include "src/utils/Wide.hxx"
+#include "repack/Packing.hxx"
+#include "utils/WriteBin.hxx"
+#include "utils/Wide.hxx"
 
 #include <cassert>
 

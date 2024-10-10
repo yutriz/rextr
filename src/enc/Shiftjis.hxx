@@ -1,8 +1,8 @@
 #ifndef REXTR_ENC_SJIS_HXX
 #define REXTR_ENC_SJIS_HXX
 
-#include "src/enc/Encoding.hxx"
-#include "src/enc/CodePoint.hxx"
+#include "enc/Encoding.hxx"
+#include "enc/CodePoint.hxx"
 
 static const cp_basic sjis_page_8bit[0x100] = {
   0xfffd, 0xfffd, 0xfffd, 0xfffd, 0xfffd, 0xfffd, 0xfffd, 0xfffd,

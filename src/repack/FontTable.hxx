@@ -1,8 +1,8 @@
 #ifndef REXTR_REPACK_FONTTABLE_HXX
 #define REXTR_REPACK_FONTTABLE_HXX
 
-#include "src/enc/CodePoint.hxx"
-#include "src/utils/Json.hxx"
+#include "enc/CodePoint.hxx"
+#include "utils/Json.hxx"
 
 #include <unordered_map>
 #include <fstream>
