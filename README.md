@@ -19,7 +19,7 @@ There are three principle types of pointers used in locating data:
 To generate a json file which consists of recognized texts in Shift-JIS
 
 ```
-quickextr -i extracted_file 
+quickextr -i file_that_contains_text
 ```
 
 Here are some samples of generated json files https://github.com/yutriz/SN1_SCNs
@@ -29,7 +29,7 @@ Here are some samples of generated json files https://github.com/yutriz/SN1_SCNs
 to insert translated texts(in UTF-8) into the original file
 
 ```
-quickrepack -i corresponding_json_file -r original_rawfile
+quickrepack -i corresponding_json_file -r file_that_contains_text
 ```
 
 Note: This should work well with english translation since all alphabetic letters and most of the punctions can be represented in ASCII which is supported by game itself. However, with non-english translation, a mapping from the original japanese encoding to encoding of your language is required to prevent potential crash(I dont quite understand it though and I'm not familiar with disassbmbly). Also, to correctly display translated text, a font of supported format such as NFTR where all charecters in translated text are included is required to replace original font.
@@ -40,7 +40,7 @@ Thus to specify an encoding used to repack:
 quickrepack_enc -r oringinal_rawfile -i corresponding_json_file -c your_cjk_character_conversion_table(in unicode.org style)
 ```
 
-use --help option to check more 
+Genuinely translating game ROMs is way more complex. Usually a game ROM consists of different parts and other specific tools is needed to find where text-related files are and to extract them, check https://github.com/yutriz/SN1-2_tl_tools to have a overview of how NDS rom is translated.
 
 ## Todo
 1. auto non-english encoding conversion
