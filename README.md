@@ -43,7 +43,7 @@ quickrepack_enc -r oringinal_rawfile -i corresponding_json_file -c your_cjk_char
 use --help option to check more 
 
 ## Todo
-1. auto non-english encoding coversion
+1. auto non-english encoding conversion
 2. supports of other types of pointer
 
 ## WORKING
