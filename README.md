@@ -22,6 +22,8 @@ To generate a json file which consists of recognized texts in Shift-JIS
 quickextr -i extracted_file 
 ```
 
+Here are some samples of generated json files https://github.com/yutriz/SN1_SCNs
+
 *Then translate the text in json file*
 
 to insert translated texts(in UTF-8) into the original file
