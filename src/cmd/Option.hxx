@@ -1,5 +1,5 @@
-#ifndef REXTR_CMD_OPTS_HXX
-#define REXTR_CMD_OPTS_HXX
+#ifndef REXTR_CMD_OPTS_HPP
+#define REXTR_CMD_OPTS_HPP
 
 #include <unistd.h>
 #include <getopt.h>

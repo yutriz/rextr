@@ -85,7 +85,7 @@ int main(int argc, char *argv[]) {
     std::ofstream ofs(output, std::ios::binary);
     SceneR_offset scnro = readSceneR_offset(ifile);
 
-    auto enc = newEncoding_cjk(cjk);
+    auto enc = newCJKEncoding(cjk);
     enc->add(CodePoint{CodePoint_t::B8, 0x0a}, CodePoint{CodePoint_t::B8, 0x0a});
 
     repack_offset_enc(scnro, rfile, *enc, ofs, checkSceneR_offset);
