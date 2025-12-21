@@ -1,97 +1,50 @@
-cmake_minimum_required(VERSION 3.9.1)
+cmake_minimum_required(VERSION 3.10)
+
 project(rextr)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_FLAGS "-Wno-deprecated-declarations")
 
-include_directories(src)
-
 find_package(OpenSSL REQUIRED)
 include_directories(${OPENSSL_INCLUDE_DIR})
 
-make_directory(./cmds)
-aux_source_directory(src/enc ENC)
-aux_source_directory(src/extr EXTR)
-aux_source_directory(src/repack REPACK)
-aux_source_directory(src/utils UTILS)
+set(MAIN_SRC src/rextr.cpp)
 
+file(GLOB ENC_SRCS          "src/enc/*.cpp")
+file(GLOB EXTR_SRCS         "src/extr/*.cpp")
+file(GLOB REPACK_SRCS       "src/repack/*.cpp")
+file(GLOB SPECIAL_SRCS      "src/special/*.cpp")
+file(GLOB STRUCTURE_SRCS    "src/structure/*.cpp")
+file(GLOB UTILS_SRCS        "src/utils/*.cpp")
 
-add_executable(
-    quickextr
-    src/cmd/quickextr.cxx
-    ${ENC}
-    ${EXTR}
-    ${UTILS}
-)
-target_link_libraries(
-    quickextr
-PRIVATE
-    ${OPENSSL_LIBRARIES}
-)
-
-# add_executable(
-#     quickextr_ps1
-#     src/cmd/quickextr_ps1.cxx
-#     ${ENC}
-#     ${EXTR}
-#     ${UTILS}
-# )
-# target_link_libraries(
-#     quickextr_ps1
-# PRIVATE
-#     ${OPENSSL_LIBRARIES}
-# )
-
-
-add_executable(
-    extr
-    src/cmd/extr.cxx
-    ${ENC}
-    ${EXTR}
-    ${UTILS}
-)
-target_link_libraries(
-    extr 
-PRIVATE
-    ${OPENSSL_LIBRARIES}
+set(PROJECT_SRCS
+    ${MAIN_SRC}
+    ${ENC_SRCS}
+    ${EXTR_SRCS}
+    ${REPACK_SRCS}
+    ${SPECIAL_SRCS}
+    ${STRUCTURE_SRCS}
+    ${UTILS_SRCS}
 )
 
 add_executable(
-    quickrepack 
-    src/cmd/quickrepack.cxx
-    ${ENC}
-    ${REPACK}
-    ${UTILS}
-)
-target_link_libraries(
-    quickrepack 
-PRIVATE
-    ${OPENSSL_LIBRARIES}
+    rextr 
+    ${PROJECT_SRCS}
 )
 
-add_executable(
-    quickrepack_enc
-    src/cmd/quickrepack_enc.cxx
-    ${ENC}
-    ${REPACK}
-    ${UTILS}
-)
-target_link_libraries(
-    quickrepack_enc 
-PRIVATE
-    ${OPENSSL_LIBRARIES}
+target_include_directories(
+    rextr 
+PUBLIC 
+    src/enc
+    src/extr
+    src/repack
+    src/speical
+    src/utils
+    src
 )
 
-
-add_executable(
-    nodupl
-    src/cmd/nodupl.cxx
-    ${ENC}
-    ${REPACK}
-    ${UTILS}
-)
 target_link_libraries(
-    nodupl
+    rextr 
 PRIVATE
     ${OPENSSL_LIBRARIES}
 )

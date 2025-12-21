@@ -1,0 +1,3 @@
+[submodule "dependencies/ndstool"]
+	path = dependencies/ndstool
+	url = https://github.com/devkitPro/ndstool.git
