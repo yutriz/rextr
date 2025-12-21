@@ -79,7 +79,7 @@ int main(int argc, char** argv)
       exit(0);
     }
 
-    if ( (result.count("extract") == 0 && result.count("repack")) || \
+    if ( (result.count("extract") == 0 && result.count("repack") == 0) || \
          (result.count("extract") && result.count("repack")) ) {
         std::cout << "Please specify one operation(extract or repack)." << std::endl;
         exit(0);

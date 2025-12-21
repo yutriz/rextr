@@ -39,3 +39,6 @@
 res
 
 **/__pycache__/
+
+res/
+.tmp/
