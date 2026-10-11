@@ -1,18 +1,37 @@
 import os 
-import re
 import json
 import argparse
+import subprocess
+from pathlib import Path
+from collections import defaultdict
+from typing import Union, List, Optional, Dict
+
+
+from compress import lzss_compress
+from pyutils.logger import Logger
+
 import ndspy.lz10
 import numpy as np
-from typing import Union, List, Optional, Dict
-from collections import defaultdict
-from pathlib import Path
 
-from font import NFTR, CharFont, BitImage
-from font.bits_utils import bit_depth_descale
+from font import NFTR, CharFont, BitImage, get_appended_nftr
+
+NDSTOOL_BIN_PATH = "./dependencies/ndstool/ndstool"
+REXTR_BIN_PATH = "./build/rextr"
+
+LESS_LOG = True
+
+FORCE_IGNORE_CHARACTERS = [
+    '\n'
+]
+
+# get corresponding json file "foo.recog.json" from "foo.rtz"
+def getCorrespongdingJsonFilepath(scn_filepath: str | Path):
+    p = Path(scn_filepath)
+    
+    return p.parent / (p.stem + ".recog.json")
+
 
 def _call_ndstool_unpack(rom_filepath: Union[Path, str]):
-    NDSTOOL_BIN_PATH = "./dependencies/ndstool/ndstool"
     OUTPUT_DIR = "./res/roms"
 
     if isinstance(rom_filepath, str):
@@ -40,17 +59,20 @@ def _call_ndstool_unpack(rom_filepath: Union[Path, str]):
         "-h", os.path.join(output_dir_, "header.bin"),
     ]
 
-    cmd = [re.escape(str(k)) for k in cmd]
+    cmd = [str(k) for k in cmd]
 
-    os.system(" ".join(cmd))
-    print(f"Rom extracted to {str(output_dir_)}")
+    result = subprocess.run(
+        cmd, 
+        capture_output=True, text=True
+    )
+    Logger.print("Cmd: " + " ".join(cmd))
+    Logger.subprocess_print(result)
+    Logger.print(f"Rom extracted to {str(output_dir_)}")
 
 def _call_ndstool_repack(
     unpacked_root_dir: Union[Path,str],
     output_filepath: Union[Path, str]
 ):
-    NDSTOOL_BIN_PATH = "./dependencies/ndstool/ndstool"
-    OUTPUT_DIR = "./res/roms"
 
     if isinstance(output_filepath, str):
         output_filepath = Path(output_filepath)
@@ -70,10 +92,16 @@ def _call_ndstool_repack(
         "-h", os.path.join(unpacked_root_dir, "header.bin"),
     ]
 
-    cmd = [re.escape(str(k)) for k in cmd]
+    cmd = [str(k) for k in cmd]
 
-    os.system(" ".join(cmd))
-    print(f"Rom repacked to {str(output_filepath)}")
+    result = subprocess.run(
+        cmd, 
+        capture_output=True, text=True
+    )
+
+    Logger.print("Cmd: " + " ".join(cmd))
+    Logger.subprocess_print(result)
+    Logger.print(f"Rom repacked to {str(output_filepath)}")
 
 def get_character_conversion_table(
     nftr_filepath: str,
@@ -92,16 +120,18 @@ def get_character_conversion_table(
     nftr_.get_shiftJIS_to_unicode_conversion(output_filepath)
 
 def _call_rextr_with_args(
-    args: Union[List[str], str]
+    args: List[str]
 ):
-    REXTR_BIN_PATH = "./build/rextr"
     args_ = args
-    if isinstance(args, List):
-        args_ = " ".join(args)
 
-    os.system(
-        REXTR_BIN_PATH + " " + args_
+    cmd = [REXTR_BIN_PATH, *args_]
+    result = subprocess.run(
+        cmd,
+        capture_output=True, text=True
     )
+
+    Logger.print("Cmd: " + " ".join(cmd))
+    Logger.subprocess_print(result)
 
 def extract_scenes(
     scn_filepaths: List[str],
@@ -122,15 +152,14 @@ def extract_scenes(
     if conversion_filepath is not None:
         args = ["-c", conversion_filepath] + args
 
-    args = [re.escape(str(k)) for k in args]
+    args = [str(k) for k in args]
 
     _call_rextr_with_args(args=args)
 
 def _get_translated_characters(recog_json_filepaths: List[str]) -> Dict[str, int]:
     chara_map = defaultdict(int)
 
-    TRANSLATED_KEY = "recogn_text"
-    # TRANSLATED_KEY = "translated_text"
+    TRANSLATED_KEY = "translated_text"
         
     for filepath in recog_json_filepaths:
         with open(filepath, "r") as f:
@@ -139,7 +168,7 @@ def _get_translated_characters(recog_json_filepaths: List[str]) -> Dict[str, int
         blocks = data["blocks"]
         blocks = [ blk for blk in blocks 
                     if blk["recognized"] 
-                    # and blk["translated"] 
+                    and blk["translated"] 
                 ]
         for blk in blocks:
             tled: str = blk[TRANSLATED_KEY]
@@ -149,94 +178,18 @@ def _get_translated_characters(recog_json_filepaths: List[str]) -> Dict[str, int
     
     return chara_map
 
-def get_appended_nftr(
+def _get_appended_nftr(
     recog_json_filepaths,
     nftr_font_filepath,
     ttf_font_filepath
 ):
-
     used_characters = list(_get_translated_characters(recog_json_filepaths).keys())
-    print(used_characters)
-
-    nftr_ = NFTR(nftr_font_filepath)
-    original_conv = nftr_.get_shiftJIS_to_unicode_conversion()
-    original_characters = list(original_conv.keys()) # sjis to unicode
-    original_characters.sort()
-
-    vacant_codepoints = []
-    for idx in range(len(original_characters) - 1):
-        this_character = original_characters[idx]
-        if this_character < 0xff:
-            continue
-        
-        next_character = original_characters[idx+1]
-
-        is_adjacent = (this_character+1 == next_character)
-        if not is_adjacent:
-            vacant_codepoints += list(range(this_character+1, next_character))
-        else:
-            pass
-
-        if len(vacant_codepoints) > len(used_characters):
-            break
+    for c in FORCE_IGNORE_CHARACTERS:
+        if c in used_characters:
+            used_characters.remove(c)
     
-    if (nftr_.tile_width != nftr_.tile_height):
-        print(f"{nftr_font_filepath} seems to have different tile width and height, using tile_width {nftr_.tile_width}")
-    font_size = nftr_.tile_width
-    
-    ttf_font = CharFont(
-        ttf_font_filepath, 
-        size=font_size
-    )
-
-    new_mapping = {}
-    appended_conv = {} # unicode to appended vacant codepoint 
-
-    reversed_original_conv = {} # unicode to sjis
-    for origin_codepoint, unicode_codepoint in original_conv.items():
-        reversed_original_conv[unicode_codepoint] = origin_codepoint
-
-    for idx, chara in enumerate(used_characters):
-        # existing in original_conv 
-        chara_ord = ord(chara)
-        if chara_ord in list(reversed_original_conv.keys()):
-            appended_conv[chara_ord] = reversed_original_conv[chara_ord]
-            print(f"existing one: {chara}")
-        # not existing, add to chara_glyphs
-        else:
-            appended_conv[chara_ord] = vacant_codepoints[idx]
-            # in PIL.Image
-            chara_image = ttf_font.character_image(
-                chara,
-                backgroud_color="black",
-                top_left_pos=(0, -1),
-                mode='L',
-                charecter_shadow=True
-            )
-            chara_image_data = np.array(chara_image)
-
-            # performance issue?
-            for r in range(chara_image_data.shape[0]):
-                for c in range(chara_image_data.shape[1]):
-                    chara_image_data[r][c] = bit_depth_descale(chara_image_data[r][c], 8, 2)
-
-            chara_bit_image = BitImage(
-                chara_image_data,
-                width=chara_image_data.shape[1],
-                height=chara_image_data.shape[0],
-                bit_depth=2
-            )
-
-            new_mapping[vacant_codepoints[idx]] = chara_bit_image
-
-    nftr_.append_type_2_cmap(
-        new_mapping,
-        glyph_background=0
-    )
-    
-    return (
-        nftr_,
-        appended_conv
+    return get_appended_nftr(
+        nftr_font_filepath, used_characters, ttf_font_filepath
     )
 
 def _rewrite_scenes(
@@ -246,11 +199,11 @@ def _rewrite_scenes(
     args = [
         "-r", 
         "-c", appended_conv_filepath,
-        "raws", *raw_filepaths
+        "--raws", *raw_filepaths
     ]
 
-    args = [re.escape(str(k)) for k in args]
-
+    args = [str(k) for k in args]
+    
     _call_rextr_with_args(args)
 
 def repack_rom(
@@ -258,95 +211,151 @@ def repack_rom(
     appended_conv_filepath: str,
     unpacked_root_dir: str,
     output_filepath: str,
+    clean_dir: str = None
 ):
+    # decompress if rtz is uncompressed 
+    for scn_path in scn_filepaths:
+        if scn_path.endswith(".dec"): # decompressed by other tool(tool name?)
+            continue
+
+        try:
+            decompressed = ndspy.lz10.decompressFromFile(scn_path)
+            with open(scn_path, "wb") as f:
+                f.write(decompressed)
+        except:
+            Logger.print(f"{scn_path} is already decompressed, doing nothing")
+
     _rewrite_scenes(
         scn_filepaths,
         appended_conv_filepath
     )
 
-    # compress
+    # compress: note ndspy.lz10 can decompress but can't compress
     for scn_path in scn_filepaths:
-        compressed = ndspy.lz10.compressFromFile(scn_path)
-        with open(scn_path, "wb") as f:
-            f.write(compressed)
+        lzss_compress(scn_path, scn_path)
+
+    # clear recog.json
+    if not clean_dir:
+        clean_dir: Path = Path(unpacked_root_dir) / "data" / "scnrts"
+        for f in clean_dir.rglob("*.recog.json"):
+            if f.is_file():
+                f.unlink()
 
     _call_ndstool_repack(
         unpacked_root_dir,
         output_filepath
     )
 
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
 
-    parser.add_argument("positional_args", type=str, nargs="*")
+USAGE_PRINT_INFO = """
+    # unpack a .nds file using ndstool
+    python %(prog)s --unpack foo.nds
+
+    # extract character conversions from a .nftr file
+    python %(prog)s --get_character_conv foo.nftr -o output_conversions.txt
+
+    # extract text from SN NDS scnrtz files
+    python %(prog)s --extract_scns -c conversions.txt path_to_scn_foo1.rtz path_to_scn_foo2.rtz 
+
+    # repack a .nds file
+    python %(prog)s --repack --unpacked_root_dir ./res/roms/sn1 -o translated.nds
+        --ttf_file font.ttf --nftr ./res/roms/sn1/font.nftr
+        ./res/roms/sn1/data/scnrts/translated_1.rtz # corresponding to translated_1.recog.json
+        ./res/roms/sn1/data/scnrts/translated_2.rtz
+        ...
+"""
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(
+        usage=USAGE_PRINT_INFO
+    )
+
+    parser.add_argument("files", type=str, nargs="*")
     parser.add_argument("-o", "--output", type=str, default="", help="output filepath for ANY")
 
-    parser.add_argument("--unpack", action="store_true", help="unpack a .nds rom")
+    parser.add_argument("--unpack", action="store_true", help="[unpack]unpack a .nds rom")
     parser.add_argument("--get_character_conv", action="store_true", 
-                        help="dump shiftJIS to Unicode conversion in nftr font file")
-    parser.add_argument("--extract_scns", action="store_true", help="extracted recognized characters in file")
+                        help="[cp_conv]dump shiftJIS to Unicode conversion in nftr font file")
+    parser.add_argument("--extract_scns", action="store_true", help="[extr]extracted recognized characters in file")
     parser.add_argument("--repack", action="store_true", help="repack translated rom")
 
-    parser.add_argument("--ttf_file", type=str, default="")
-    parser.add_argument("--nftr_file", type=str, default="")
-    parser.add_argument("--unpacked_root_dir", type=str, default="")
+    parser.add_argument("--ttf_file", type=str, default="", help="[repack]")
+    parser.add_argument("--nftr_file", type=str, default="", help="[repack]")
+    parser.add_argument("--unpacked_root_dir", type=str, default="", help="[repack]")
     parser.add_argument("-c", "--conv", type=str, nargs="?", default=None,
-                        help="conversion.txt filepath")
+                        help="[extr]conversion.txt filepath")
 
     args = parser.parse_args()
 
-    positional_args = args.positional_args
+    files = args.files
+
+    # TODO: one phrase failed, other files should remain unchanged
     
     if args.unpack:
-        assert(len(positional_args) == 1)
-        _call_ndstool_unpack(positional_args[0])
+        assert(len(files) == 1)
+        _call_ndstool_unpack(files[0])
     elif args.get_character_conv:
-        assert(len(positional_args) == 1)
+        assert(len(files) == 1)
         output_filepath = args.output
         get_character_conversion_table(
-            positional_args[0],
+            files[0],
             output_filepath
+        )
+        print(
+            "[NOTICE] Sometimes there might be additional character conversions that are not included in "
+            ".nftr files (e.g. new line symbol) and they can be added to character conversion .txt file. "
+            "Checking rom manually is recommanded."
         )
     elif args.extract_scns:
         extract_scenes(
-            positional_args,
+            files,
             args.conv
+        )
+    elif args.repack and not files:
+         _call_ndstool_repack(
+            args.unpacked_root_dir,
+            args.output
         )
     elif args.repack:
         # try find scn_file-corresponding translated.json 
-        raw_scn_filepaths = positional_args.copy()
-
-        def getCorrespongdingJsonFilepath(scn_filepath):
-            p = Path(scn_filepath)
-            return p.parent / (p.stem + ".recog.json")
+        raw_scn_filepaths = files.copy()
 
         json_filepaths = [
             str(
                 getCorrespongdingJsonFilepath(scn_filepath)
-            )
-            for scn_filepath in raw_scn_filepaths
+            ) for scn_filepath in raw_scn_filepaths
         ]
 
-        nftr_, appended_conv = get_appended_nftr(
+        # check json file integrity
+        for j_fpath in json_filepaths:
+            with open(j_fpath, 'rb') as f:
+                data = json.load(f)
+                block_data = data["blocks"]
+                for blk in block_data:
+                    tl: str = blk["translated_text"]
+                    if not tl:
+                        raise Exception(f"{blk} contains an empty translation text, stopped")  
+
+        nftr_, utf2custom_conv = _get_appended_nftr(
             json_filepaths,
             args.nftr_file,
             args.ttf_file
         )
 
-        tmp_conv_filepath = "./.tmp/appened_conv.txt"
+        tmp_conv_filepath = "./tmp/utf2custom_conv.txt"
         tmp_conv_filepath = Path(tmp_conv_filepath)
         tmp_conv_filepath.parent.mkdir(exist_ok=True, parents=True)
         with open(tmp_conv_filepath, 'w') as f:
             f.write("# unicode to custom codepoint\n")
-            for unicode_codepoint, custom_codepoint in appended_conv.items():
+            for unicode_codepoint, custom_codepoint in utf2custom_conv.items():
                 f.write(f"0x{unicode_codepoint:x}    0x{custom_codepoint:x}\n")
     
-        with open("./.tmp/appended.NFTR", "wb") as f:
+        with open("./tmp/appended.NFTR", "wb") as f:
             f.write(nftr_.dump())
 
-        # overwrite original NFTR file 
-        # with open(args.nftr_file, "wb") as f:
-        #     f.write(nftr_.dump())
+        # overwrite original NFTR file, make sure you have a backup for original one 
+        with open(args.nftr_file, "wb") as f:
+            f.write(nftr_.dump())
 
         repack_rom(
             raw_scn_filepaths,
@@ -354,3 +363,5 @@ if __name__ == "__main__":
             args.unpacked_root_dir,
             args.output
         )
+    else:
+        print("No command specified. Exit")

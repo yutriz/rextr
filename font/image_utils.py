@@ -176,7 +176,7 @@ def create_character_shadow(
     
     return shaded
 
-def bit_depth_descale(
+def image_bit_depth_descale(
     image: np.ndarray,
     LUT = LUT_8_TO_2,
 ):

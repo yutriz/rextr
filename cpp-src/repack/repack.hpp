@@ -11,7 +11,7 @@ size_t repack(
     RepackScene &rscn, 
     Encoding &enc, 
     const std::string &origin_filepath,
-    std::ostream &os, 
+    const std::string &output_filepath, 
     bool is_little_endian = true, 
     bool do_validation = true
 );

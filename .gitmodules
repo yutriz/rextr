@@ -1,3 +1,9 @@
 [submodule "dependencies/ndstool"]
 	path = dependencies/ndstool
 	url = https://github.com/devkitPro/ndstool.git
+	ignore = dirty
+
+[submodule "dependencies/Nintendo_DS_Compressors"]
+	path = dependencies/Nintendo_DS_Compressors
+	url = https://github.com/PeterLemon/Nintendo_DS_Compressors.git
+	ignore = dirty

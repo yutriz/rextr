@@ -40,9 +40,7 @@ struct RepackScene {
     { } 
 };
 
-const std::string SPEC_KEYNAME_MD5SUM  = "md5";
-const std::string SPEC_KEYNAME_BLOCKS  = "blocks";
-
-
+const std::string SPEC_KEYNAME_MD5SUM = "md5";
+const std::string SPEC_KEYNAME_BLOCKS = "blocks";
 
 #endif
