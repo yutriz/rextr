@@ -112,8 +112,8 @@ struct Block {
 };
 
 struct RepackBlock : public Block {
-    std::string m_recognized_text;
-    std::string m_recognized_text_zh;
+    std::string m_translated_text;
+    std::string m_translated_text_en;
    
     explicit RepackBlock(
         int num, 
@@ -136,8 +136,9 @@ struct RepackBlock : public Block {
             recog, 
             recogn_text,
             _empty_code_point_list(), tl)
-        , m_recognized_text(translated_text)
-        , m_recognized_text_zh(translated_text_en) 
+        , m_translated_text(translated_text)
+        , m_translated_text_en(translated_text_en)
+        // , m_
     { }
 
 private: 

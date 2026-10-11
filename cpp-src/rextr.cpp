@@ -140,6 +140,14 @@ int main(int argc, char** argv)
         
         Encoding enc = newEncoding(conversion_filepath);
 
+        auto additional_convs = result["additional_conversion"].as<std::string>();
+        if (!additional_convs.empty()) {
+            auto convs = parseAdditionalConversions(additional_convs);
+            for (auto &conv: convs) {
+                enc.add(conv.first, conv.second);
+            }
+        }
+        
         for (auto& raw: raws) {
             results.emplace_back(
                 thread_pool.enqueue(
@@ -147,12 +155,11 @@ int main(int argc, char** argv)
                         std::string dump_file_name = getDumpedFileName(raw);
                         Json translated_scn_json = parseJson(dump_file_name);
                         RepackScene translated_scn = parseRepackScene(translated_scn_json);
-                        std::ofstream output_stream(raw);
                         repack(
                             translated_scn, 
                             enc,
                             raw,
-                            output_stream
+                            raw
                         );
                     }
                 )

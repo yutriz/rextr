@@ -3,8 +3,37 @@ import random
 from enum import Enum
 from typing import List, Dict
 
+import numpy as np
+
 from font.bit_image import BitImage
+from font.char_font import CharFont
 from font.vis_utils import visualize_distribution
+from font.bits_utils import bit_depth_descale
+from pyutils.logger import Logger, LogLevel
+
+# IMPORTANT NOTE: (at least in NDS SN1/2 game)
+#   Though it is not mentioned in https://problemkaputt.de/gbatek-ds-cartridge-nitro-font-resource-format.htm,
+#   that in a type 2 CMap, an increase order is expected, breaking this would make
+#   some characters can not be displayed correctly. (Guess it is searching by order, so
+#   once the querying character number is greater than character number it finds first, it
+#   will return undefined character immediately.) And in SN1/2 the last type 2 CMap has
+#   its first_character set to 0x0000 and last_character to 0xffff, appending new characters
+#   and then re-sorting them all becomes the easiest way.
+# P.S. Any methods other than APPEND_TO_EXISTING_CMAP?
+class TestFlag(Enum):
+    APPEND_NEW_CMAP = 0,
+    APPEND_TO_EXISTING_CMAP = 1,
+    REPLACE_EXISTING_CMAP = 2
+TEST_FLAG: TestFlag = TestFlag.APPEND_TO_EXISTING_CMAP
+
+INVALID_CMAP_IDX = 777
+APPEND_CODEPOINT_OUT_OF_ENCODING_RANGE = False
+
+INVALID_TILE_NUMBERS = [ 0xffff ]
+
+# TODO
+# 1. append_type_1_cmap is incomplete.
+# 2. 
 
 class CMAP:
     chunk_size: int
@@ -128,6 +157,7 @@ class CMAP:
         # For Map Type1, Custom TileNo's assigned to increasing CharNo's:
         #   14h+N*2  2    TileNo's for First..Last Char (FFFFh=None; no tile assigned)
         #   ...      0/2  Padding to 4-byte boundary (zerofilled)
+        #   Note: TileNo can be invalid (0xffff), which means the character glyph doesn't exist.  
         # For Map Type2, Custom TileNo's assigned to custom CharNo's:
         #   14h      2    Number of following Char=Tile groups...
         #   16h+N*4  2    Character Number
@@ -291,7 +321,7 @@ class NFTR:
         # Version
         self.version = self.bytes_to_int(fp.read(2))
         if not (self.version in [ 0x100, 0x101, 0x102 ]):
-            print("unknow NFTR version {}".format(self.version))
+            Logger.print("unknow NFTR version {}".format(self.version), log_level=LogLevel.WARNING)
 
         # Decompressed Resource Size
         self.decomp_res_size = self.bytes_to_int(fp.read(4)) # TO MODIFY
@@ -337,7 +367,7 @@ class NFTR:
         self.width = self.bytes_to_int(fp.read(1))
 
         # Width_bis (?) 
-        _ = fp.read(1)
+        self.width_bis = self.bytes_to_int(fp.read(1)) # unknow, but keep it 
 
         # encoding
         enc = self.bytes_to_int(fp.read(1))
@@ -480,10 +510,8 @@ class NFTR:
 
         self.chunk_offsets["first_character_map"] = offset + self.chara_width_chunk_size
         
-        assert(
-            (self.chunk_offsets["first_character_map"] == self.offset_to_chara_map_chunk_p8 - 8),
+        assert self.chunk_offsets["first_character_map"] == self.offset_to_chara_map_chunk_p8 - 8, \
             f"seems offset to first character map doesn't match"
-        )
 
     # CMAP chunk
     # Character Map(s) - Translation Tables for ASCII/JIS/etc to Tile Numbers?
@@ -514,7 +542,7 @@ class NFTR:
         
         self.merged_cmaps = merge_CMAP(self.chara_maps)
 
-    def find_character_glyph(self, chara):
+    def find_character_glyph(self, chara) -> BitImage:
         if chara in list(self.merged_cmaps.keys()):
             tp = self.merged_cmaps[chara]
             cmap_idx, tile_idx = tp[0], tp[1]
@@ -540,41 +568,131 @@ class NFTR:
             print("")
 
     ######################## nftr append ####################################
-    def append_type_0_cmap(self):
-        raise NotImplementedError
 
-    def append_type_1_cmap(
-        self, 
-        first_character: int,
-        sorted_glyphs: List[BitImage],
-        glyph_background: int = 0,
-        byte_order_flag: str = "little"
-    ):
-        assert(
-        (
-            ((sorted_glyphs[0].width * sorted_glyphs[0].height * sorted_glyphs[0].bit_depth)+7)//8 == \
-            self.tile_bytes_size
-        ),
-            "Appended tile size doesn't match"
-        )
+
+    def _assure_new_characters(
+        self, chara_glyph_dict: Dict[int, BitImage]
+    ) -> Dict[int, BitImage]:
+        """
+            ### Note: This will modify input chara_glyph_dict.
+            remove characters that satisfy conditions below: 
+            1. exist in CMaps of old NFTR
+            2. do bind to a valid tile
+            3. whose glyph tile size equals to that in NFTR 
+        """
+        
+        # glyph bit image size check 
+        _glyph_check_random = chara_glyph_dict[
+            random.choice(list(chara_glyph_dict.keys()))
+        ]
+        glyph_tile_size_in_byte = (
+           7 + (_glyph_check_random.width * _glyph_check_random.height * _glyph_check_random.bit_depth)
+        ) // 8 
+        if (glyph_tile_size_in_byte != self.tile_bytes_size):
+            raise Exception("Appended tile size doesn't match")
 
         # conflict check
         origin_conversion = self.get_shiftJIS_to_unicode_conversion()
-        for i in range(len(sorted_glyphs)):
-            if first_character+i in origin_conversion:
-                raise Exception(f"Seems 0x{(first_character+i):x} already exists in original NFTR")
-            else:
+        existing_character_wo_glyph = []
+        # those characters should not be in a new cmap
+        duplicate_characters = [] 
+        for chara, _ in chara_glyph_dict.items():
+            # code point doesn't exist
+            if not chara in origin_conversion:
                 continue
 
-        # character glyph chunk
-        self.chara_glyphs += sorted_glyphs
+            # exist, then check its tile
+            q = self.merged_cmaps[chara]
+            cmap_idx, tile_idx = q[0], q[1]
+            if tile_idx in INVALID_TILE_NUMBERS:
+                existing_character_wo_glyph.append(chara)
+            else:
+                Logger.print(
+                    f"0x{chara:x} in original NFTR has its glyph already, will be removed", 
+                    LogLevel.REGULAR
+                )
+            # chara now has a glyph tile no matter existing one or new one
+            duplicate_characters.append(chara)
+
+        # corresponding
+        # existing_character_wo_glyph -> glyphs_to_be_added -> tile_numbers
+        glyphs_to_be_added: list[BitImage] = [
+            chara_glyph_dict[no_glyph_chara]
+            for no_glyph_chara in existing_character_wo_glyph
+        ]
+
+        # glyphs already extracted, can remove redundant now
+        for c in duplicate_characters:
+            chara_glyph_dict.pop(c, None)
+
         last_tile_number = len(self.chara_glyphs) - 1
-        sorted_tile_nums = [ i for i in range(last_tile_number+1, last_tile_number+1+len(sorted_glyphs)) ]
+        tile_numbers = [
+            last_tile_number + 1 + i
+            for i in range(len(glyphs_to_be_added))
+        ]
 
-        c_map = CMAP.create_type_1_cmap(first_character, sorted_tile_nums, byte_order_flag)
-        self.chara_maps.append(c_map)
+        self._append_character_glyphs_and_update_NFTR_info(
+            glyphs_to_be_added
+        )
 
-        # character glyph chunk has padding or doesn't
+        # modify origin cmap 
+        for idx, no_glyph_chara in enumerate(existing_character_wo_glyph):
+            q = self.merged_cmaps[no_glyph_chara]
+            cmap_idx = q[0]
+
+            map_type = self.chara_maps[cmap_idx].map_type
+            if map_type == 0:
+                raise Exception(
+                    f"0x{chara:x} seems to be assigned with a invalid number \"{tile_idx}\""
+                     "but it exists in a Type0 CMap which shouldn't allow a unassigned tile."
+                )
+            elif map_type == 1:
+                _offset = no_glyph_chara - self.chara_maps[cmap_idx].first_character
+                assert _offset < len(self.chara_maps[cmap_idx].tile_nums)
+                assert self.chara_maps[cmap_idx].tile_nums[_offset] in INVALID_TILE_NUMBERS
+                self.chara_maps[cmap_idx].tile_nums[_offset] = tile_numbers[idx]
+                Logger.print(
+                    f"0x{no_glyph_chara:x} exists in original NFTR but has no glyph. "
+                    "Glyph of this character will be added.",
+                    LogLevel.REGULAR
+                )
+            elif map_type == 2:
+                assert self.chara_maps[cmap_idx].custom_dict[no_glyph_chara] in INVALID_TILE_NUMBERS 
+                self.chara_maps[cmap_idx].custom_dict[no_glyph_chara] = tile_numbers[idx]
+                Logger.print(
+                    f"0x{no_glyph_chara:x} exists in original NFTR but has no glyph. "
+                    "Glyph of this character will be added.",
+                    LogLevel.REGULAR
+                )
+            else:
+                raise Exception(f"Unknown map type \"{map_type}\" of chara_maps[{cmap_idx}].")
+
+        Logger.print(
+            f"Total {len(existing_character_wo_glyph)} tiles are assign with no-glyph-characters in original NFTR.",
+            LogLevel.REGULAR
+        )
+
+        return chara_glyph_dict
+
+    def _append_character_glyphs_and_update_NFTR_info(self,
+        sorted_glyphs: List[BitImage], # record the character outside function
+        glyph_background: int = 0
+    ) -> None:
+        """
+        Usage:
+            Case A: append a new cmap with corresponding tiles
+                1. Prepare CMap and append the cmap to self.chara_maps
+                2. Call this function to add new glyphs to self.chara_glyphs \
+                    and update things like chunk sizes and offsets in NFTR
+            Case B: add tiles without adding a new Cmap (i.e. adding tiles \
+                to existing codepoints that have no tiles)
+                1. Call this function and modify Character-TileNo in cmap
+        Return: added tile numbers
+        
+        """
+        
+        self.chara_glyphs += sorted_glyphs
+
         CGLP_CHUNK_HEADER_SIZE = 16 
         new_chara_glyph_chunk_size_without_padding = \
             self.tile_bytes_size * len(self.chara_glyphs) + CGLP_CHUNK_HEADER_SIZE
@@ -613,39 +731,57 @@ class NFTR:
         decomp_res_size = NFTR_HEADER_SIZE + FNIF_HEADER_SIZE + \
                           self.chara_glyph_chunk_size + \
                           self.chara_width_chunk_size
-                                
+
+        # re locate
         for idx in range(len(self.chara_maps) - 1):
             decomp_res_size += self.chara_maps[idx].chunk_size
             self.chara_maps[idx].offset_to_next_map_p8 = decomp_res_size + 8
-
         self.chara_maps[-1].offset_to_next_map_p8 = 0
 
-    def append_type_2_cmap(
+        self.decomp_res_size = decomp_res_size + self.chara_maps[-1].chunk_size
+
+        self.num_of_following_chunk = 0x3 + len(self.chara_maps)
+
+    def append_type_0_cmap(self):
+        raise NotImplementedError
+
+    def append_type_1_cmap(
         self, 
-        chara_glyph_dict: Dict[int, BitImage],
+        first_character: int,
+        sorted_glyphs: List[BitImage],
         glyph_background: int = 0,
         byte_order_flag: str = "little"
     ):
-        
-        _glyph_check_random = chara_glyph_dict[
-            random.choice(list(chara_glyph_dict.keys()))
-        ]
-        assert(
-        (
-            ((_glyph_check_random.width * _glyph_check_random.height * _glyph_check_random.bit_depth)+7)//8 == \
-            self.tile_bytes_size
-        ),
+        assert \
+            ((sorted_glyphs[0].width * sorted_glyphs[0].height * sorted_glyphs[0].bit_depth)+7)//8 == \
+            self.tile_bytes_size, \
             "Appended tile size doesn't match"
-        )
-
+        
         # conflict check
         origin_conversion = self.get_shiftJIS_to_unicode_conversion()
-        for chara, _ in chara_glyph_dict.items():
-            if chara in origin_conversion:
-                raise Exception(f"Seems 0x{chara:x} already exists in original NFTR")
+        for i in range(len(sorted_glyphs)):
+            if first_character+i in origin_conversion:
+                raise Exception(f"Seems 0x{(first_character+i):x} already exists in original NFTR")
             else:
                 continue
 
+        last_tile_number = len(self.chara_glyphs) - 1
+        sorted_tile_nums = [ i for i in range(last_tile_number+1, last_tile_number+1+len(sorted_glyphs)) ]
+
+        c_map = CMAP.create_type_1_cmap(first_character, sorted_tile_nums, byte_order_flag)
+        self.chara_maps.append(c_map)
+
+        self._append_character_glyphs_and_update_NFTR_info(
+            sorted_glyphs,
+            glyph_background=glyph_background
+        )
+
+    def append_type_2_cmap(
+        self, 
+        chara_glyph_dict: Dict[int, BitImage], 
+        glyph_background: int = 0,
+        byte_order_flag: str = "little"
+    ):
         # character glyph chunk
         chara_glyph_dict_sorted = dict(
             sorted(
@@ -653,62 +789,139 @@ class NFTR:
                 key=lambda item: item[0]
             )
         )
+        
+        self._assure_new_characters(chara_glyph_dict_sorted)
 
         chara_tile_num_dict_sorted = { }
+
+        sorted_glyphs = list(chara_glyph_dict_sorted.values())
+
         last_tile_number = len(self.chara_glyphs) - 1
-        for chara, glyph in chara_glyph_dict_sorted.items():
-            self.chara_glyphs.append(glyph)
-            chara_tile_num_dict_sorted[chara] = last_tile_number + 1
-            last_tile_number += 1
+        tile_numbers = [ 
+            last_tile_number + 1 + i
+            for i in range(len(sorted_glyphs))
+        ]
+
+        for idx, chara in enumerate(chara_glyph_dict_sorted.keys()):
+            chara_tile_num_dict_sorted[chara] = tile_numbers[idx]
 
         c_map = CMAP.create_type_2_cmap(chara_tile_num_dict_sorted, byte_order_flag)
         self.chara_maps.append(c_map)
 
-        # character glyph chunk has padding or doesn't
-        CGLP_CHUNK_HEADER_SIZE = 16 
-        new_chara_glyph_chunk_size_without_padding = \
-            self.tile_bytes_size * len(self.chara_glyphs) + CGLP_CHUNK_HEADER_SIZE
-        # padding to 4
-        new_chara_glyph_chunk_size = (new_chara_glyph_chunk_size_without_padding + 3) // 4 * 4
-        self.chara_glyph_chunk_size = new_chara_glyph_chunk_size
+        self._append_character_glyphs_and_update_NFTR_info(
+            sorted_glyphs,
+            glyph_background=glyph_background
+        )
 
-        # Character width chunk
-        CWDH_CHUNK_HEADER_SIZE = 16
-        self.chara_width_num_last_tile = len(self.chara_glyphs) - 1
-        for glyph in list(chara_glyph_dict_sorted.values()):
-            ls = glyph.get_left_spacing(glyph_background)
-            cwb = glyph.get_character_width_ex_l_r_spacing(glyph_background)
-            twc = glyph.width
-            self.tile_width_tiles.append([ls, cwb, twc])
-        new_chara_width_chunk_size_without_padding = \
-            CWDH_CHUNK_HEADER_SIZE + 3 * len(self.tile_width_tiles)
-        new_chara_width_chunk_size = (new_chara_width_chunk_size_without_padding + 3) // 4 * 4
-        self.chara_width_chunk_size = new_chara_width_chunk_size
+        Logger.print(
+            "{} new character glyph added.".format(len(tile_numbers)),
+            LogLevel.REGULAR
+        )
 
-        # offset modification in bytes
-        # usually this won't change
-        NFTR_HEADER_SIZE = 16
-        FNIF_HEADER_SIZE = self.font_info_chunk_size
+    def append_to_existing_type_2_cmap(
+        self, 
+        chara_glyph_dict: Dict[int, BitImage],
+        glyph_background: int = 0,
+    ):
+        chara_glyph_dict_sorted = dict(
+            sorted(
+                chara_glyph_dict.items(), 
+                key=lambda item: item[0]
+            )
+        )
 
-        # usually this won't change
-        self.offset_to_chara_glyph_chunk_p8 = \
-            NFTR_HEADER_SIZE + FNIF_HEADER_SIZE + 8
-        
-        self.offset_to_chara_width_chunk_p8 = \
-            self.offset_to_chara_glyph_chunk_p8 + self.chara_glyph_chunk_size 
+        self._assure_new_characters(chara_glyph_dict_sorted)
 
-        self.offset_to_chara_map_chunk_p8 = \
-            self.offset_to_chara_width_chunk_p8 + self.chara_width_chunk_size 
+        cmap_idx = INVALID_CMAP_IDX
+        last_t2_cmap = self.chara_maps[-1]
+        for i in reversed(range(len(self.chara_maps))):
+            if self.chara_maps[i].map_type == 2:
+                last_t2_cmap = self.chara_maps[i]
+                cmap_idx = i
+                break
+        if cmap_idx == INVALID_CMAP_IDX:
+            raise Exception("No existing type2 CMAP in current NFTR.")
 
-        decomp_res_size = NFTR_HEADER_SIZE + FNIF_HEADER_SIZE + \
-                          self.chara_glyph_chunk_size + \
-                          self.chara_width_chunk_size
-                                
-        for idx in range(len(self.chara_maps) - 1):
-            decomp_res_size += self.chara_maps[idx].chunk_size
-            self.chara_maps[idx].offset_to_next_map_p8 = decomp_res_size + 8
+        last_tile_number = len(self.chara_glyphs) - 1
+        new_tile_numbers = [
+            last_tile_number + 1 + i
+            for i in range(len(chara_glyph_dict_sorted))
+        ]
 
-        self.chara_maps[-1].offset_to_next_map_p8 = 0
+        for idx, chara in enumerate(chara_glyph_dict_sorted.keys()):
+            self.chara_maps[cmap_idx].custom_dict[chara] = new_tile_numbers[idx]
+
+        self.chara_maps[cmap_idx].custom_dict = dict(
+            sorted(
+                self.chara_maps[cmap_idx].custom_dict.items(),
+                key=lambda item: item[0]
+            )
+        )
+
+        self.chara_maps[cmap_idx].num_of_custom_assigned_tiles += len(chara_glyph_dict_sorted)
+        self.chara_maps[cmap_idx].num_of_characters = \
+            self.chara_maps[cmap_idx].num_of_custom_assigned_tiles
+        chunk_size = 0x14 + 2 + 4*len(self.chara_maps[cmap_idx].custom_dict)
+        if chunk_size % 4 != 0:
+            chunk_size += 2
+        self.chara_maps[cmap_idx].chunk_size = chunk_size
+
+        if self.chara_maps[cmap_idx].first_character > list(chara_glyph_dict_sorted.keys())[0]:
+            self.chara_maps[cmap_idx].first_character = list(chara_glyph_dict_sorted.keys())[0]
+        if self.chara_maps[cmap_idx].last_character < list(chara_glyph_dict_sorted.keys())[-1]:
+            self.chara_maps[cmap_idx].last_character = list(chara_glyph_dict_sorted.keys())[-1]
+
+        self._append_character_glyphs_and_update_NFTR_info(
+            list(chara_glyph_dict_sorted.values()),
+            glyph_background=glyph_background
+        )
+
+        Logger.print(
+            "{} new character glyph added.".format(len(new_tile_numbers)),
+            LogLevel.REGULAR
+        )
+
+    def replace_existing_type_2_cmap(
+        self, 
+        chara_glyph_dict: Dict[int, BitImage],
+    ): 
+        """
+            ### DONT 
+            test funnction, to be updated. 
+        """
+        self._assure_new_characters(chara_glyph_dict)
+
+        cmap_idx = INVALID_CMAP_IDX
+        last_t2_cmap = self.chara_maps[-1]
+        for i in reversed(range(len(self.chara_maps))):
+            if self.chara_maps[i].map_type == 2:
+                last_t2_cmap = self.chara_maps[i]
+                cmap_idx = i
+                break
+        if cmap_idx == INVALID_CMAP_IDX:
+            raise Exception("No exis")
+
+        chara_glyph_dict_sorted = dict(
+            sorted(
+                chara_glyph_dict.items(),
+                key=lambda item: item[0]
+            )
+        )
+
+        chara_no_s = list(last_t2_cmap.custom_dict.keys())
+        tile_no_s = [last_t2_cmap.custom_dict[c] for c in chara_no_s]
+
+        new_chara_no_s = list(chara_glyph_dict_sorted.keys())
+        for idx, tile_no in enumerate(tile_no_s):
+            if (idx < len(chara_glyph_dict_sorted)):
+                # replace glyph in chara_glyph
+                self.chara_glyphs[tile_no] = chara_glyph_dict_sorted[new_chara_no_s[idx]]
+                last_t2_cmap.custom_dict.pop(chara_no_s[idx], None)
+                last_t2_cmap.custom_dict[new_chara_no_s[idx]] = tile_no
+            else:
+                break
+
+        self.merged_cmaps = merge_CMAP(self.chara_maps)
     
     def get_shiftJIS_to_unicode_conversion(self, output_path=None):
         sjis_codepoints = self.merged_cmaps.keys()
@@ -733,12 +946,18 @@ class NFTR:
                 if len(unicode_string) == 1:
                     conversion[sjis_codepoint] = ord(unicode_string)
                 else:
-                    print(f"{unicode_string} seems to contain more than one characters, skipped")
+                    Logger.print(
+                        f"{unicode_string} seems to contain more than one characters, skipped", 
+                        LogLevel.WARNING
+                    )
                     
             except UnicodeDecodeError:
                 # Happens if the integer(s) do not form a valid Shift JIS sequence
-                print(f"0x{sjis_codepoint:x} seems unable to be converted UTF-8 code point, replaced with a \"△\" (0x25b3)")
                 conversion[sjis_codepoint] = ord("△")
+                # Logger.print(
+                #     f"0x{sjis_codepoint:x} seems unable to be converted UTF-8 code point, replaced with a \"△\" (0x25b3)",
+                #     LogLevel.WARNING
+                # )
 
         if output_path is None:
             return conversion
@@ -777,7 +996,7 @@ class NFTR:
                     self.int_to_bytes(0, 1) + \
                     self.int_to_bytes(0, 2) + \
                     self.int_to_bytes(self.width, 1) + \
-                    self.int_to_bytes(0, 1) + \
+                    self.int_to_bytes(self.width_bis, 1) + \
                     self.int_to_bytes(enc_indicator, 1) + \
                     self.int_to_bytes(self.offset_to_chara_glyph_chunk_p8, 4) + \
                     self.int_to_bytes(self.offset_to_chara_width_chunk_p8, 4) + \
@@ -834,3 +1053,145 @@ class NFTR:
             cmap_packs += char_map.dump()
         
         return nftr_pack + finf_pack + cglp_pack + cwdh_pack + cmap_packs
+
+    def visualize_distribution(self):
+        visualize_distribution(list(self.merged_cmaps.keys()))
+
+# return 
+def get_appended_nftr(
+    nftr_font_filepath: str,
+    used_characters: list,
+    ttf_font_filepath: str,
+) -> tuple[NFTR, dict]:
+    # shift jis table: http://charset.7jp.net/sjis.html
+    # standard: https://encoding.spec.whatwg.org/#shift_jis-decoder
+    #  0x00 as second byte is not allowed
+    #  range 0xa000 to 0xdf00 is also not allowed
+
+    ##### restriction
+    def sjis_valid(cp: int) -> bool:
+        row_byte = cp & 0xFF
+        col_byte = (cp >> 8) & 0xFF 
+
+        valid_row = (0x81 <= row_byte and row_byte <= 0x9F) or (0x81 <= row_byte and row_byte <= 0x9F) 
+        valid_col = (0x40 <= col_byte and col_byte <= 0x7E) or (0x80 <= col_byte and col_byte <= 0xFC)
+          
+        if valid_row and valid_col:
+            return True
+        else:
+            return False
+    #####
+
+    nftr_ = NFTR(nftr_font_filepath)
+    original_conv = nftr_.get_shiftJIS_to_unicode_conversion()
+    original_characters = list(original_conv.keys()) # sjis to unicode
+    original_characters.sort()
+
+    Logger.print("{} characters used in translation text.".format(len(used_characters)))
+
+    # find enough vacant in origin codepoint table (even some might not be used then)
+    vacant_codepoints = []
+    for idx in range(len(original_characters) - 1):
+        this_character = original_characters[idx]
+        if this_character < 0xff:
+            continue
+        
+        next_character = original_characters[idx+1]
+
+        is_adjacent = (this_character+1 == next_character)
+        if not is_adjacent:
+            candicates = list(range(this_character+1, next_character))
+            candicates = [ c for c in candicates if sjis_valid(c)]
+            vacant_codepoints += candicates
+        else:
+            pass
+
+        if len(vacant_codepoints) >= len(used_characters):
+            break
+
+    if len(vacant_codepoints) < len(used_characters):
+        if not APPEND_CODEPOINT_OUT_OF_ENCODING_RANGE:
+            raise Exception(
+                "Vacant code points ({}) in original NFTR not capable of including all new added characters({})."
+                .format(len(vacant_codepoints), len(used_characters))
+            )
+        else:
+            # vacant cp not enough
+            last_char = original_characters[-1]
+            to_append = len(used_characters) - len(vacant_codepoints)
+            for i in range(to_append):
+                appended_vacancy = last_char + i + 1
+                vacant_codepoints.append(appended_vacancy)
+
+    ####
+    if (nftr_.tile_width != nftr_.tile_height):
+        Logger.print(
+            f"{nftr_font_filepath} seems to have different tile width and height, using tile_width {nftr_.tile_width}",
+            log_level=LogLevel.WARNING
+        )
+    font_size = nftr_.tile_width
+    ttf_font = CharFont(
+        ttf_font_filepath, 
+        size=font_size
+    )
+
+    #### 
+    new_mapping = {}
+    appended_conv = {} # unicode to appended vacant codepoint 
+
+    reversed_original_conv = {} # unicode to sjis
+    for origin_codepoint, unicode_codepoint in original_conv.items():
+        reversed_original_conv[unicode_codepoint] = origin_codepoint
+
+    vacant_idx = 0
+    for idx, chara in enumerate(used_characters):
+        utf_chara_ord = ord(chara)
+
+        # existing in original_conv 
+        if utf_chara_ord in list(reversed_original_conv.keys()):
+            appended_conv[utf_chara_ord] = reversed_original_conv[utf_chara_ord]
+            # Logger.print(f"existing one: {chara}", LogLevel.WARNING)
+        else: 
+            appended_conv[utf_chara_ord] = vacant_codepoints[vacant_idx]
+            vacant_idx += 1 # won't overflow
+
+        # in PIL.Image
+        chara_image = ttf_font.character_image(
+            chara,
+            backgroud_color="black",
+            top_left_pos=(0, -1),
+            mode='L',
+            charecter_shadow=True
+        )
+        chara_image_data = np.array(chara_image)
+
+        # bad performance?
+        for r in range(chara_image_data.shape[0]):
+            for c in range(chara_image_data.shape[1]):
+                chara_image_data[r][c] = bit_depth_descale(chara_image_data[r][c], 8, 2)
+
+        chara_bit_image = BitImage(
+            chara_image_data,
+            width=chara_image_data.shape[1],
+            height=chara_image_data.shape[0],
+            bit_depth=2
+        )
+
+        new_mapping[appended_conv[utf_chara_ord]] = chara_bit_image
+
+    if TEST_FLAG == TestFlag.APPEND_NEW_CMAP:
+        nftr_.append_type_2_cmap(
+            new_mapping,
+            glyph_background=0
+        )
+    elif TEST_FLAG == TestFlag.APPEND_TO_EXISTING_CMAP:
+        nftr_.append_to_existing_type_2_cmap(
+            new_mapping,
+            glyph_background=0
+        )
+    elif TEST_FLAG == TestFlag.REPLACE_EXISTING_CMAP:
+        nftr_.replace_existing_type_2_cmap(
+            new_mapping
+        )
+
+    return (nftr_, appended_conv)

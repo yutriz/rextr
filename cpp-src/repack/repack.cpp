@@ -24,47 +24,51 @@ size_t repack(
     RepackScene &rscn, 
     Encoding &enc, 
     const std::string &origin_filepath,
-    std::ostream &os, 
+    const std::string &output_filepath, 
     bool is_little_endian, 
     bool do_validation
 ) {
-
     if (do_validation) {
         Validator::validateScene(GAME_NAME, rscn, origin_filepath);
     }
 
-    std::ifstream rfs(origin_filepath, std::ios::binary);
-    
-    //  char or unsigned char doesn't matter
-    std::vector<char> chunk_data( (std::istreambuf_iterator<char>(rfs)), //most vexing parse
-                                   std::istreambuf_iterator<char>()   );
+    std::vector<char> chunk_data; // char or unsigned char doesn't matter
+
+    std::ifstream ifs(origin_filepath, std::ios::binary);
+    chunk_data.assign( 
+        std::istreambuf_iterator<char>(ifs),
+        std::istreambuf_iterator<char>()   
+    );
+    ifs.close();
 
     size_t r_offset = 0; // raw file ptr offset
+    
+    auto ofs = std::ofstream(output_filepath, std::ios::binary);
 
     for (auto iter=rscn.m_textblocks->begin(); iter!=rscn.m_textblocks->end(); ++iter) {
         size_t buffer_size = iter->m_offset - r_offset;
         
-        os.write(chunk_data.data()+sizeof(char)*r_offset, buffer_size-1);
+        ofs.write(chunk_data.data()+sizeof(char)*r_offset, buffer_size-1);
         r_offset += buffer_size;
 
         if(!REPACK_ENGLISH) {
-            auto len_zh = countBytes(iter->m_recognized_text_zh);
-            writeIntBinary(os, len_zh, is_little_endian, 1);
+            auto len_zh = countBytes(iter->m_translated_text);
+            writeIntBinary(ofs, len_zh, is_little_endian, 1);
 
             writeEncodingConvertedStringBinary(
-                os, 
-                iter->m_recognized_text_zh, 
+                ofs, 
+                iter->m_translated_text, 
                 is_little_endian,
                 enc
             );
             r_offset += iter->m_len; // origin 
         } else {
-            auto len_en = countBytes(iter->m_recognized_text);
-            writeIntBinary(os, len_en, is_little_endian, 1);
+            auto len_en = countBytes(iter->m_translated_text_en);
+            writeIntBinary(ofs, len_en, is_little_endian, 1);
 
             writeEncodingConvertedStringBinary(
-                os, 
-                iter->m_recognized_text, 
+                ofs, 
+                iter->m_translated_text_en, 
                 is_little_endian,
                 enc
             );
@@ -74,7 +78,7 @@ size_t repack(
 
     size_t end = chunk_data.size();
     size_t buffer_size = end - r_offset;
-    os.write(chunk_data.data()+sizeof(char)*r_offset, buffer_size);
+    ofs.write(chunk_data.data()+sizeof(char)*r_offset, buffer_size);
     //os.flush();
     r_offset += buffer_size;
 
